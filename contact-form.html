@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	
+	<!-- HEAD content -->
+
+	<!-- Google reCapthcha -->
+	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+</head>
+
+<body>
+	
+	<form id="contact" enctype="multipart/form-data" method="post">
+		<input type="email" placeholder="your@email.com" name="mail" maxlength="50" aria-label="Email" required>
+		<input type="text" placeholder="Your message subject (4 - 100 characters)" name="subject" maxlength="100" aria-label="Subject" required>
+		<textarea placeholder="Your message content (20 - 1000 characters)" aria-label="Message" name="mesagge" maxlength="1000" resize="none" required></textarea>
+		<div class="g-recaptcha" data-sitekey="RECAPTCHA_PUBLIC_KEY"></div>
+		<input type="submit" value="Send the message" name="submit">
+	</form>
+		
+	<script type="text/javascript" src="/js/contact.min.js"></script>
+
+</body>
+
+</html>

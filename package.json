@@ -1,0 +1,15 @@
+{
+  "name": "contact-form-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function is used to implement the backend logic which communicates with an SNS topic to which an email address is subscribed to be notified via email when a user fills out the form.",
+  "main": "lambda.mjs",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "Jaime Elso",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.1290.0",
+    "node-fetch": "^3.3.0"
+  }
+}
