@@ -1,7 +1,9 @@
-/**
- * This script is responsible for handling the form submission of a contact form.
- * It selects the form and its input elements, gets and sanitizes their values,
- * and then validates them using a regular expression and length checks.
+/*
+ * Copyright (c) Jaime Elso de Blas (https://jaimeelso.com)
+ * Follow me on twitter: @jaimeelso
+ * Check out my Github: https://github.com/jaimeelso
+ * This code is licensed under the MIT license.
+ * Created on: 01/20/2023
 */
 
 /**
