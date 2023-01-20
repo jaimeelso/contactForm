@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) Jaime Elso de Blas (https://jaimeelso.com)
+ * Follow me on twitter: @jaimeelso
+ * Check out my Github: https://github.com/jaimeelso
+ * This code is licensed under the MIT license.
+ * Created on: 01/20/2023
+*/
+
+
 /**
  * @module node-fetch
  * The 'node-fetch' library is used to perform HTTP requests
