@@ -13,18 +13,26 @@
 	
 	<!-- HEAD content -->
 
-	<!-- Google reCapthcha -->
-	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+	<!-- Cloudflare Turnstile -->
+	<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
 </head>
 
 <body>
-	
-	<form id="contact" enctype="multipart/form-data" method="post">
+
+	<form id="contact" method="post">
 		<input type="email" placeholder="your@email.com" name="mail" maxlength="50" aria-label="Email" required>
-		<input type="text" placeholder="Your message subject (4 - 100 characters)" name="subject" maxlength="100" aria-label="Subject" required>
-		<textarea placeholder="Your message content (20 - 1000 characters)" aria-label="Message" name="mesagge" maxlength="1000" resize="none" required></textarea>
-		<div class="g-recaptcha" data-sitekey="RECAPTCHA_PUBLIC_KEY"></div>
+		<input type="text" placeholder="Your message subject (4 - 100 characters)" name="subject" maxlength="100" minlength="4" aria-label="Subject" required>
+		<textarea placeholder="Your message content (20 - 1000 characters)" aria-label="Message" name="mesagge" maxlength="1000" minlength="20" resize="none" required></textarea>
+		<div class="hp" aria-hidden="true">
+			<label for="contact-website">Leave this field empty</label>
+			<input type="text" id="contact-website" name="website" tabindex="-1" autocomplete="off">
+		</div>
+		<div class="cf-turnstile" data-sitekey="TURNSTILE_PUBLIC_KEY"></div>
+		<div class="consent">
+			<input type="checkbox" id="contact-consent" name="consent" required>
+			<label for="contact-consent">I have read and accept the privacy policy.</label>
+		</div>
 		<input type="submit" value="Send the message" name="submit">
 	</form>
 		

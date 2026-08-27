@@ -7,22 +7,21 @@
 */
 
 /**
- * @module node-fetch
- * The 'node-fetch' library is used to perform HTTP requests
+ * HTTP requests use the global `fetch` built into the Node.js runtime (stable since
+ * Node 18, no dependency needed).
 */
-import fetch from 'node-fetch';
 
 /**
- * @module aws-sdk/clients/sns.js
- * The 'aws-sdk' library is used to interact with Amazon Simple Notification Service (SNS)
+ * @module @aws-sdk/client-sns
+ * The AWS SDK v3 SNS client is used to interact with Amazon Simple Notification Service (SNS)
 */
-import SNS from 'aws-sdk/clients/sns.js';
+import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 
 /**
- * @module aws-sdk/clients/secretsmanager.js
- * The 'aws-sdk' library is used to interact with Amazon Secrets Manager to securely store and manage application secrets.
+ * @module @aws-sdk/client-secrets-manager
+ * The AWS SDK v3 Secrets Manager client is used to securely store and manage application secrets.
 */
-import SecretsManager from 'aws-sdk/clients/secretsmanager.js';
+import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 
 /**
  * The region where the AWS services are hosted.
@@ -32,10 +31,10 @@ import SecretsManager from 'aws-sdk/clients/secretsmanager.js';
 const REGION = 'eu-west-1';
 
 /**
- * reCAPTCHA private key
+ * Turnstile private key
  * @type {(null|string)}
  */
-let CAPTCHA_KEY = null;
+let TURNSTILE_SECRET_KEY = null;
 
 /**
  * Topic ARN
@@ -44,7 +43,8 @@ let CAPTCHA_KEY = null;
 let SNS_ARN = null;
 
 /**
- * Specify the required fields for the Lambda function.
+ * Specify the required fields for the Lambda function. "website" is intentionally not
+ * required: it's a honeypot field that must stay empty for real users.
  * @type {Array <string>}
  * @const
  */
@@ -94,20 +94,20 @@ const VERIFY_INPUT_ERROR = {
 		message: 'Invalid inputs'
 	})
 };
-const RECAPTCHA_CONNECTION_ERROR = {
+const TURNSTILE_CONNECTION_ERROR = {
 	statusCode: 500,
 	body: JSON.stringify({
 		success: false,
-		errorCode: 'RECAPTCHA_CONNECTION_ERROR',
-		message: 'Could not connect to reCAPTCHA server'
+		errorCode: 'TURNSTILE_CONNECTION_ERROR',
+		message: 'Could not connect to Turnstile server'
 	})
 };
-const RECAPTCHA_VERIFY_ERROR = {
+const TURNSTILE_VERIFY_ERROR = {
 	statusCode: 500,
 	body: JSON.stringify({
 		success: false,
-		errorCode: 'RECAPTCHA_VERIFY_ERROR',
-		message: 'reCAPTCHA verify returned false'
+		errorCode: 'TURNSTILE_VERIFY_ERROR',
+		message: 'Turnstile verify returned false'
 	})
 };
 const SNS_PUBLISH_ERROR = {
@@ -127,22 +127,20 @@ const FORM_SUBMITTED_SUCCESSFULLY = {
 };
 
 /**
- * Initializes the CAPTCHA_KEY and SNS_ARN variables with the values retrieved from Secrets Manager.
+ * Initializes the TURNSTILE_SECRET_KEY and SNS_ARN variables with the values retrieved from Secrets Manager.
  * @async
  */
 const init = async () => {
-	const secretsManager = new SecretsManager({
+	const secretsManager = new SecretsManagerClient({
 		region: REGION
 	});
-	
+
 	try {
-		const secret = await secretsManager.getSecretValue({ SecretId: 'SECRET_ID' }).promise(); // Raplace SECRET_ID with your secret ID
+		const secret = await secretsManager.send(new GetSecretValueCommand({ SecretId: 'SECRET_ID' })); // Raplace SECRET_ID with your secret ID
 		const secrets = JSON.parse(secret.SecretString);
-	
-		CAPTCHA_KEY = secrets.CAPTCHA_KEY; // Raplace .CAPTCHA_KEY with the Key of your secret
+
+		TURNSTILE_SECRET_KEY = secrets.TURNSTILE_SECRET_KEY; // Raplace .TURNSTILE_SECRET_KEY with the Key of your secret
 		SNS_ARN = secrets.SNS_ARN; // Raplace .SNS_ARN with the Key of your secret
-		console.log("CAPTCHA_KEY: " + CAPTCHA_KEY);
-		console.log("SNS_ARN: " + SNS_ARN);
 	} catch (error) {
 		console.log('Error: ' + error);
 	}
@@ -156,7 +154,7 @@ await init();
  * @param {Object} input - The input fields to be validated.
  * @returns {(Object|Boolean)} - The cleaned input if validation passed or false if validation failed.
  */
-const validateInput = (input) => {
+export const validateInput = (input) => {
     // Verify if the input is an object
     if (typeof input !== 'object') {
         console.log('Invalid input, expected an object');
@@ -198,42 +196,49 @@ const validateInput = (input) => {
 };
 
 /**
- * Connects to the reCAPTCHA API and verifies the token received in the Lambda function.
- * 
- * @param {String} token - The reCAPTCHA token received in the form submission.
+ * Connects to the Cloudflare Turnstile API and verifies the token received in the Lambda function.
+ *
+ * @param {String} token - The Turnstile token received in the form submission.
  * @returns {Boolean} - Returns true if the token is valid, false otherwise.
- * @throws {Error} - If invalid input or could not connect to reCAPTCHA server.
+ * @throws {Error} - If invalid input or could not connect to the Turnstile server.
  */
-const verifyRecaptcha = async (token) => {
+export const verifyTurnstile = async (token) => {
     // Verify if the token is an string
 	if (typeof token !== 'string') {
 		console.log('Invalid input, expected a string.');
 		throw new Error('Invalid input, expected a string.');
 	}
 
-	// Preparing the data for the request to the reCAPTCHA API.
-	const data = 'secret=' + CAPTCHA_KEY + '&response=' + token;
+	// Preparing the data for the request to the Turnstile API.
+	const data = 'secret=' + TURNSTILE_SECRET_KEY + '&response=' + token;
 
 	try {
-		// Perform a POST request to the reCAPTCHA API with the private key and the token received in the Lambda function.
-		const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+		// Perform a POST request to the Turnstile API with the private key and the token received in the Lambda function.
+		const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
 			method: 'POST',
 			body: data,
 			headers: {
 				"Content-Type": "application/x-www-form-urlencoded"
 			}
 		});
-		
-		const responseData = await response.json();
 
-		console.log(responseData);
+		const responseData = await response.json();
 
 		return responseData.success;
 	} catch (error) {
-		// Throw an error if Lambda could not connect to reCAPTCHA server.
-		throw new Error('Lambda could not connect to reCAPTCHA server. ERROR: ' + error);
+		// Throw an error if Lambda could not connect to the Turnstile server.
+		throw new Error('Lambda could not connect to Turnstile server. ERROR: ' + error);
 	}
 };
+
+/**
+ * Checks whether the honeypot field was filled in. "website" is hidden off-screen in the
+ * form and must stay empty for real users; a non-empty value marks the submission as spam.
+ *
+ * @param {Object} body - The parsed request body.
+ * @returns {Boolean} - True if the honeypot field is filled in.
+ */
+export const isHoneypotFilled = (body) => Boolean(body && body.website);
 
 /**
  * Publishes a message to a specified SNS topic
@@ -246,7 +251,7 @@ const verifyRecaptcha = async (token) => {
 const publishMessageToSNS = async (mail, subject, message) => {
     try {
         // Create an instance of the SNS client
-        const sns = new SNS({
+        const sns = new SNSClient({
             region: REGION
         });
 
@@ -265,7 +270,7 @@ const publishMessageToSNS = async (mail, subject, message) => {
         };
 
         // Publish the message to the specified SNS topic
-        const response = await sns.publish(snsParams).promise();
+        const response = await sns.send(new PublishCommand(snsParams));
 
         return response;
     } catch (error) {
@@ -275,18 +280,18 @@ const publishMessageToSNS = async (mail, subject, message) => {
 };
 
 /**
- * AWS Lambda function that receives a contact form submission, verifies the reCAPTCHA token, 
+ * AWS Lambda function that receives a contact form submission, verifies the Turnstile token,
  * and then sends the form data to an SNS topic.
- * 
+ *
  * @param {Object} event - The event object passed to the Lambda function.
  * @returns {Object} - Returns a JSON object containing the success or failure of the form submission.
  */
 export const handler = async (event) => {
 	// Some Browsers send and options method request previus to send a post request to check CORS
 	if (event.httpMethod === 'OPTIONS') return {statusCode: 200}
-	
+
 	// Check that the secrets have been retrieved.
-	if (!CAPTCHA_KEY || !SNS_ARN) {
+	if (!TURNSTILE_SECRET_KEY || !SNS_ARN) {
 		console.log(SECRET_RETRIEVAL_ERROR);
 		return SECRET_RETRIEVAL_ERROR;
 	}
@@ -301,25 +306,32 @@ export const handler = async (event) => {
 		return JSON_PARSE_ERROR;
 	}
 
+	// Honeypot: if filled, silently report success without verifying Turnstile or
+	// publishing to SNS, so the bot doesn't learn it was caught.
+	if (isHoneypotFilled(body)) {
+		console.log('Honeypot field filled, discarding submission without publishing.');
+		return FORM_SUBMITTED_SUCCESSFULLY;
+	}
+
 	// Validates and sanitizes the input values.
 	body = validateInput(body);
 	if(!body) {
 		console.log(VERIFY_INPUT_ERROR);
 		return VERIFY_INPUT_ERROR;
 	}
-	
-	// Check if reCAPTCHA validates the request.
+
+	// Check if Turnstile validates the request.
 	let success = false;
 	try {
-		success = await verifyRecaptcha(body.token);
+		success = await verifyTurnstile(body.token);
 	} catch (error) {
-		console.log(RECAPTCHA_CONNECTION_ERROR);
+		console.log(TURNSTILE_CONNECTION_ERROR);
 		console.log(error);
-		return RECAPTCHA_CONNECTION_ERROR;
+		return TURNSTILE_CONNECTION_ERROR;
 	}
 	if(!success) {
-		console.log(RECAPTCHA_VERIFY_ERROR);
-		return RECAPTCHA_VERIFY_ERROR;
+		console.log(TURNSTILE_VERIFY_ERROR);
+		return TURNSTILE_VERIFY_ERROR;
 	}
 
 	//Publish a new message to the SNS topic using the form data.

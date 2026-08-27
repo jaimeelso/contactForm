@@ -3,13 +3,17 @@
   "version": "1.0.0",
   "description": "Lambda function is used to implement the backend logic which communicates with an SNS topic to which an email address is subscribed to be notified via email when a user fills out the form.",
   "main": "lambda.mjs",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "test": "test"
+    "test": "node --test"
   },
   "author": "Jaime Elso",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
-    "aws-sdk": "^2.1290.0",
-    "node-fetch": "^3.3.0"
+    "@aws-sdk/client-secrets-manager": "^3.687.0",
+    "@aws-sdk/client-sns": "^3.687.0"
   }
 }
