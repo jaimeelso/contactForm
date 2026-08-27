@@ -22,6 +22,7 @@ const form = document.querySelector('form#contact');
 const mail = form.querySelector('input[name="mail"]');
 const subject = form.querySelector('input[name="subject"]');
 const mesagge = form.querySelector('textarea[name="mesagge"]');
+const honeypot = form.querySelector('input[name="website"]');
 const submit = form.querySelector('input[name="submit"]');
 
 form.addEventListener('submit', (e) => {
@@ -30,7 +31,7 @@ form.addEventListener('submit', (e) => {
 	 */
 	e.preventDefault();
 
-	const token = grecaptcha.getResponse();
+	const token = turnstile.getResponse();
 
 	if (token.length === 0) {
 		/**
@@ -44,11 +45,12 @@ form.addEventListener('submit', (e) => {
 		const mailValue = mail.value.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;");
 		const subjectValue = subject.value.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;");
 		const mesaggeValue = mesagge.value.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;");
+		const honeypotValue = honeypot.value.trim();
 
 		/**
 		 * Validates the input values.
 		 */
-		if(!emailRegex.test(mailValue) || !subjectValue || subjectValue.length > 100 || !mesaggeValue || mesaggeValue.length > 1000) {
+		if(!emailRegex.test(mailValue) || !subjectValue || subjectValue.length < 4 || subjectValue.length > 100 || !mesaggeValue || mesaggeValue.length < 20 || mesaggeValue.length > 1000) {
 			/**
 			 * End the event.
 			 */
@@ -56,12 +58,14 @@ form.addEventListener('submit', (e) => {
 		}
 
 		/**
-		 * Create an object with the form data.
+		 * Create an object with the form data. "website" is a honeypot field: it must stay
+		 * empty for real users and is used by the backend to silently discard bot submissions.
 		 */
 		const formData = {
 			mail: mailValue,
 			subject: subjectValue,
 			message: mesaggeValue,
+			website: honeypotValue,
 			token: token
 		};
 
