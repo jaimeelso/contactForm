@@ -22,7 +22,7 @@ const form = document.querySelector('form#contact');
 const mail = form.querySelector('input[name="mail"]');
 const subject = form.querySelector('input[name="subject"]');
 const mesagge = form.querySelector('textarea[name="mesagge"]');
-const honeypot = form.querySelector('input[name="website"]');
+const honeypot = form.querySelector('input[name="hp_field"]');
 const submit = form.querySelector('input[name="submit"]');
 
 form.addEventListener('submit', (e) => {
